@@ -119,64 +119,29 @@ def cell_to_grid(data, has_cell_HS):
         return eta_bins, phi_bins, X
 
 
-def plot_layers(eta_bins, phi_bins, event_idx, X_isHS=None, X_isPU=None, X=None):
+def plot_layers(event_idx, X, label):
 
-    if X is None:
-        fig, axes = plt.subplots(4, 3, figsize=(10, 12))
+    eta_bins = np.arange(-2.5, 2.5 + 0.1, 0.1)
+    phi_bins = np.arange(-np.pi, np.pi + np.pi/32, np.pi/32)
 
-        for ch in range(6):
-            ax = axes[ch // 3, ch % 3]
-            
-            heatmap_data = X_isPU[event_idx, :, :, ch] + X_isHS[event_idx, :, :, ch]
-            
-            mesh = ax.pcolormesh(eta_bins,
-                                 phi_bins,
-                                 heatmap_data,
-                                 cmap='viridis',
-                                 norm = LogNorm(vmin = 1e-1, vmax = 1e1))
-            
-            ax.set_xlabel('Eta')
-            ax.set_ylabel('Phi')
-            ax.set_title(f'Layer {ch} [HS+PU]')
-            
-            fig.colorbar(mesh, ax=ax, label='ET [GeV]')
+    fig, axes = plt.subplots(2, 3, figsize=(10, 6))
 
-        for ch in range(6):
-            ax = axes[ch // 3 + 2, ch % 3]
-            
-            heatmap_data = X_isHS[event_idx, :, :, ch]
-            
-            mesh = ax.pcolormesh(eta_bins,
-                                 phi_bins,
-                                 heatmap_data,
-                                 cmap='viridis',
-                                 norm = LogNorm(vmin = 1e-1, vmax = 1e1))
-            
-            ax.set_xlabel('Eta')
-            ax.set_ylabel('Phi')
-            ax.set_title(f'Layer {ch} [HS-only]')
-            
-            fig.colorbar(mesh, ax=ax, label='ET [GeV]')
-
-    else:
-        fig, axes = plt.subplots(2, 3, figsize=(10, 6))
-
-        for ch in range(6):
-            ax = axes[ch // 3, ch % 3]
-            
-            heatmap_data = X[event_idx, :, :, ch]
-            
-            mesh = ax.pcolormesh(eta_bins,
-                                 phi_bins,
-                                 heatmap_data,
-                                 cmap='viridis',
-                                 norm = LogNorm(vmin = 1e-1, vmax = 1e1))
-            
-            ax.set_xlabel('Eta')
-            ax.set_ylabel('Phi')
-            ax.set_title(f'Layer {ch}')
-            
-            fig.colorbar(mesh, ax=ax, label='ET [GeV]')
+    for ch in range(6):
+        ax = axes[ch // 3, ch % 3]
+        
+        heatmap_data = X[event_idx, :, :, ch]
+        
+        mesh = ax.pcolormesh(eta_bins,
+                             phi_bins,
+                             heatmap_data,
+                             cmap='viridis',
+                             norm = LogNorm(vmin = 1e-1, vmax = 1e1))
+        
+        ax.set_xlabel('Eta')
+        ax.set_ylabel('Phi')
+        ax.set_title(f'Layer {ch} {label}')
+        
+        fig.colorbar(mesh, ax=ax, label='ET [GeV]')
 
     plt.tight_layout()
     plt.show()
