@@ -97,3 +97,44 @@ def cell_to_grid(data):
             X_isPU[i, :, :, ch] = hist_pu.T
 
     return eta_bins, phi_bins, X_isHS, X_isPU
+
+
+def plot_layers(eta_bins, phi_bins, event_idx, X_isHS, X_isPU):
+    fig, axes = plt.subplots(4, 3, figsize=(10, 12))
+
+    for ch in range(6):
+        ax = axes[ch // 3, ch % 3]
+        
+        heatmap_data = X_isPU[event_idx, :, :, ch] + X_isHS[event_idx, :, :, ch]
+        
+        mesh = ax.pcolormesh(eta_bins,
+                             phi_bins,
+                             heatmap_data,
+                             cmap='viridis',
+                             norm = LogNorm(vmin = 1e-1, vmax = 1e1))
+        
+        ax.set_xlabel('Eta')
+        ax.set_ylabel('Phi')
+        ax.set_title(f'Layer {ch} [HS+PU]')
+        
+        fig.colorbar(mesh, ax=ax, label='ET [GeV]')
+
+    for ch in range(6):
+        ax = axes[ch // 3 + 2, ch % 3]
+        
+        heatmap_data = X_isHS[event_idx, :, :, ch]
+        
+        mesh = ax.pcolormesh(eta_bins,
+                             phi_bins,
+                             heatmap_data,
+                             cmap='viridis',
+                             norm = LogNorm(vmin = 1e-1, vmax = 1e1))
+        
+        ax.set_xlabel('Eta')
+        ax.set_ylabel('Phi')
+        ax.set_title(f'Layer {ch} [HS-only]')
+        
+        fig.colorbar(mesh, ax=ax, label='ET [GeV]')
+
+    plt.tight_layout()
+    plt.show()
