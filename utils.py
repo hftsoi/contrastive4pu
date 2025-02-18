@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve, auc, accuracy_score
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 
-def cell_to_grid(data):
+def cell_to_grid(data, has_cell_HS):
     # cell vector xyz to angles eta phi
     def compute_eta_phi(x, y, z):
         phi = np.arctan2(y, x)
@@ -37,8 +37,11 @@ def cell_to_grid(data):
     n_events = len(data['cell_eta'])
 
     # grid data format, separating HS and PU deposits
-    X_isHS = np.zeros((n_events, len(phi_bins)-1, len(eta_bins)-1, 6))
-    X_isPU = np.zeros((n_events, len(phi_bins)-1, len(eta_bins)-1, 6))
+    if has_cell_HS:
+        X_isHS = np.zeros((n_events, len(phi_bins)-1, len(eta_bins)-1, 6))
+        X_isPU = np.zeros((n_events, len(phi_bins)-1, len(eta_bins)-1, 6))
+    else:
+        X = np.zeros((n_events, len(phi_bins)-1, len(eta_bins)-1, 6))
 
     # loop over events
     for i in range(n_events):
@@ -47,7 +50,8 @@ def cell_to_grid(data):
         cell_phi    = data['cell_phi'][i]
         cell_et     = data['cell_et'][i] / 1000. # MeV -> GeV
         cell_sampling = data['cell_sampling'][i]
-        cell_isHS   = data['cell_isHS'][i]
+        if has_cell_HS:
+            cell_isHS   = data['cell_isHS'][i]
 
         abs_eta = np.abs(cell_eta)
         # conditions for separating channels according to the atlas calorimeter sampling layers
@@ -75,66 +79,104 @@ def cell_to_grid(data):
         conditions = [cond_ch0, cond_ch1, cond_ch2, cond_ch3, cond_ch4, cond_ch5]
         
         # loop over channel
-        for ch in range(len(conditions)):
-            mask = conditions[ch]
-            # further separate HS and PU deposits
-            hs_mask = mask & (cell_isHS == 1)
-            pu_mask = mask & (cell_isHS == 0)
+        if has_cell_HS:
+            for ch in range(len(conditions)):
+                mask = conditions[ch]
+                # further separate HS and PU deposits
+                hs_mask = mask & (cell_isHS == 1)
+                pu_mask = mask & (cell_isHS == 0)
+                
+                # get HS cells per layer
+                eta_hs = cell_eta[hs_mask]
+                phi_hs = cell_phi[hs_mask]
+                et_hs  = cell_et[hs_mask]
+                hist_hs, _, _ = np.histogram2d(eta_hs, phi_hs, bins=[eta_bins, phi_bins], weights=et_hs)
+                
+                # get PU cells per layer
+                eta_pu = cell_eta[pu_mask]
+                phi_pu = cell_phi[pu_mask]
+                et_pu  = cell_et[pu_mask]
+                hist_pu, _, _ = np.histogram2d(eta_pu, phi_pu, bins=[eta_bins, phi_bins], weights=et_pu)
+                
+                X_isHS[i, :, :, ch] = hist_hs.T
+                X_isPU[i, :, :, ch] = hist_pu.T
+
+        else:
+            for ch in range(len(conditions)):
+                mask = conditions[ch]
+                
+                # get HS cells per layer
+                eta = cell_eta[mask]
+                phi = cell_phi[mask]
+                et  = cell_et[mask]
+                hist, _, _ = np.histogram2d(eta, phi, bins=[eta_bins, phi_bins], weights=et)
+                
+                X[i, :, :, ch] = hist.T
+
+    if has_cell_HS:
+        return eta_bins, phi_bins, X_isHS, X_isPU
+    else:
+        return eta_bins, phi_bins, X
+
+
+def plot_layers(eta_bins, phi_bins, event_idx, X_isHS=None, X_isPU=None, X=None):
+
+    if X is None:
+        fig, axes = plt.subplots(4, 3, figsize=(10, 12))
+
+        for ch in range(6):
+            ax = axes[ch // 3, ch % 3]
             
-            # get HS cells per layer
-            eta_hs = cell_eta[hs_mask]
-            phi_hs = cell_phi[hs_mask]
-            et_hs  = cell_et[hs_mask]
-            hist_hs, _, _ = np.histogram2d(eta_hs, phi_hs, bins=[eta_bins, phi_bins], weights=et_hs)
+            heatmap_data = X_isPU[event_idx, :, :, ch] + X_isHS[event_idx, :, :, ch]
             
-            # get PU cells per layer
-            eta_pu = cell_eta[pu_mask]
-            phi_pu = cell_phi[pu_mask]
-            et_pu  = cell_et[pu_mask]
-            hist_pu, _, _ = np.histogram2d(eta_pu, phi_pu, bins=[eta_bins, phi_bins], weights=et_pu)
+            mesh = ax.pcolormesh(eta_bins,
+                                 phi_bins,
+                                 heatmap_data,
+                                 cmap='viridis',
+                                 norm = LogNorm(vmin = 1e-1, vmax = 1e1))
             
-            X_isHS[i, :, :, ch] = hist_hs.T
-            X_isPU[i, :, :, ch] = hist_pu.T
+            ax.set_xlabel('Eta')
+            ax.set_ylabel('Phi')
+            ax.set_title(f'Layer {ch} [HS+PU]')
+            
+            fig.colorbar(mesh, ax=ax, label='ET [GeV]')
 
-    return eta_bins, phi_bins, X_isHS, X_isPU
+        for ch in range(6):
+            ax = axes[ch // 3 + 2, ch % 3]
+            
+            heatmap_data = X_isHS[event_idx, :, :, ch]
+            
+            mesh = ax.pcolormesh(eta_bins,
+                                 phi_bins,
+                                 heatmap_data,
+                                 cmap='viridis',
+                                 norm = LogNorm(vmin = 1e-1, vmax = 1e1))
+            
+            ax.set_xlabel('Eta')
+            ax.set_ylabel('Phi')
+            ax.set_title(f'Layer {ch} [HS-only]')
+            
+            fig.colorbar(mesh, ax=ax, label='ET [GeV]')
 
+    else:
+        fig, axes = plt.subplots(2, 3, figsize=(10, 6))
 
-def plot_layers(eta_bins, phi_bins, event_idx, X_isHS, X_isPU):
-    fig, axes = plt.subplots(4, 3, figsize=(10, 12))
-
-    for ch in range(6):
-        ax = axes[ch // 3, ch % 3]
-        
-        heatmap_data = X_isPU[event_idx, :, :, ch] + X_isHS[event_idx, :, :, ch]
-        
-        mesh = ax.pcolormesh(eta_bins,
-                             phi_bins,
-                             heatmap_data,
-                             cmap='viridis',
-                             norm = LogNorm(vmin = 1e-1, vmax = 1e1))
-        
-        ax.set_xlabel('Eta')
-        ax.set_ylabel('Phi')
-        ax.set_title(f'Layer {ch} [HS+PU]')
-        
-        fig.colorbar(mesh, ax=ax, label='ET [GeV]')
-
-    for ch in range(6):
-        ax = axes[ch // 3 + 2, ch % 3]
-        
-        heatmap_data = X_isHS[event_idx, :, :, ch]
-        
-        mesh = ax.pcolormesh(eta_bins,
-                             phi_bins,
-                             heatmap_data,
-                             cmap='viridis',
-                             norm = LogNorm(vmin = 1e-1, vmax = 1e1))
-        
-        ax.set_xlabel('Eta')
-        ax.set_ylabel('Phi')
-        ax.set_title(f'Layer {ch} [HS-only]')
-        
-        fig.colorbar(mesh, ax=ax, label='ET [GeV]')
+        for ch in range(6):
+            ax = axes[ch // 3, ch % 3]
+            
+            heatmap_data = X[event_idx, :, :, ch]
+            
+            mesh = ax.pcolormesh(eta_bins,
+                                 phi_bins,
+                                 heatmap_data,
+                                 cmap='viridis',
+                                 norm = LogNorm(vmin = 1e-1, vmax = 1e1))
+            
+            ax.set_xlabel('Eta')
+            ax.set_ylabel('Phi')
+            ax.set_title(f'Layer {ch}')
+            
+            fig.colorbar(mesh, ax=ax, label='ET [GeV]')
 
     plt.tight_layout()
     plt.show()
