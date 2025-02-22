@@ -5,10 +5,12 @@ import os
 import sys
 import pandas as pd
 import matplotlib.pyplot as plt
+import tensorflow as tf
 from matplotlib.colors import LogNorm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve, auc, accuracy_score
 from sklearn.preprocessing import StandardScaler, LabelEncoder
+
 
 def cell_to_grid(data, has_cell_HS):
     # cell vector xyz to angles eta phi
@@ -129,7 +131,10 @@ def plot_layers(event_idx, X, label):
     for ch in range(6):
         ax = axes[ch // 3, ch % 3]
         
-        heatmap_data = X[event_idx, :, :, ch]
+        if event_idx is not None:
+            heatmap_data = X[event_idx, :, :, ch]
+        else:
+            heatmap_data = X[:, :, ch]
         
         mesh = ax.pcolormesh(eta_bins,
                              phi_bins,
@@ -145,3 +150,21 @@ def plot_layers(event_idx, X, label):
 
     plt.tight_layout()
     plt.show()
+
+
+def augment_pu(image, target_pu):
+    # input pu is 200, the target pu should be less than that to do removal
+    survival_prob = target_pu / 200
+
+    # draw random number in [0,1] and compare with survival_prob to keep or dump a pixel
+    tf.random.set_seed(42)
+    random_numbers = tf.random.uniform(tf.shape(image))
+    survival_mask = tf.cast(random_numbers < survival_prob, tf.float32)
+
+    # zero out pixels to achieve target pu level
+    image_augmented = image * survival_mask
+
+    return image_augmented
+
+
+
