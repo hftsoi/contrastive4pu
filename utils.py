@@ -152,7 +152,7 @@ def plot_layers(event_idx, X, label):
     plt.show()
 
 
-def augment_pu(image, target_pu):
+def augment_pu(image, target_pu, shift_phi):
     # input pu is 200, the target pu should be less than that to do removal
     survival_prob = target_pu / 200
 
@@ -163,6 +163,10 @@ def augment_pu(image, target_pu):
 
     # zero out pixels to achieve target pu level
     image_augmented = image * survival_mask
+
+    if shift_phi:
+        shift_amount = tf.random.uniform([], minval=0, maxval=image.shape[0], dtype=tf.int32)
+        image_augmented = tf.roll(image_augmented, shift=shift_amount, axis=0)
 
     return image_augmented
 
