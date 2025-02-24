@@ -157,7 +157,7 @@ def augment_pu(image, target_pu, shift_phi):
     survival_prob = target_pu / 200
 
     # draw random number in [0,1] and compare with survival_prob to keep or dump a pixel
-    tf.random.set_seed(42)
+    #tf.random.set_seed(42)
     random_numbers = tf.random.uniform(tf.shape(image))
     survival_mask = tf.cast(random_numbers < survival_prob, tf.float32)
 
@@ -171,23 +171,84 @@ def augment_pu(image, target_pu, shift_phi):
     return image_augmented
 
 
-def generate_pair_sig(x_hs, x_pu, target_pu_1, target_pu_2):
+def generate_pair_sig_contrastive(x_hs, x_pu, target_pu_1, target_pu_2):
     view1 = x_hs + augment_pu(image=x_pu, target_pu=target_pu_1, shift_phi=True)
     view2 = x_hs + augment_pu(image=x_pu, target_pu=target_pu_2, shift_phi=True)
     return view1, view2
 
 
-def generate_pair_bkg(x_bkg, target_pu_1, target_pu_2):
+def generate_pair_bkg_contrastive(x_bkg, target_pu_1, target_pu_2):
     view1 = augment_pu(image=x_bkg, target_pu=target_pu_1, shift_phi=True)
     view2 = augment_pu(image=x_bkg, target_pu=target_pu_2, shift_phi=True)
     return view1, view2
 
 
-def generate_sig_label(x_hs, x_pu, target_pu):
+def generate_sig_label_classification(x_hs, x_pu, target_pu):
     x = x_hs + augment_pu(image=x_pu, target_pu=target_pu, shift_phi=True)
     return x, tf.constant(1, dtype=tf.int32)
 
 
-def generate_bkg_label(x_bkg, target_pu):
+def generate_bkg_label_classification(x_bkg, target_pu):
     x = augment_pu(image=x_bkg, target_pu=target_pu, shift_phi=True)
     return x, tf.constant(0, dtype=tf.int32)
+
+
+def generate_batch_contrastive(X_hs, X_pu, X_bkg, pu_min, pu_max, batch_size):
+    n_sig = X_hs.shape[0]
+    n_bkg = X_bkg.shape[0]
+    half_batch = batch_size // 2
+
+    while True:
+        view1_list = []
+        view2_list = []
+
+        idx_sig = np.random.choice(n_sig, half_batch, replace=True)
+        for i in idx_sig:
+            x_hs = tf.convert_to_tensor(X_hs[i])
+            x_pu = tf.convert_to_tensor(X_pu[i])
+            random_pu = tf.random.uniform([2], minval=pu_min, maxval=pu_max)
+            view1, view2 = generate_pair_sig_contrastive(x_hs=x_hs, x_pu=x_pu, target_pu_1=random_pu[0], target_pu_2=random_pu[1])
+            view1_list.append(view1.numpy())
+            view2_list.append(view2.numpy())
+
+        idx_bkg = np.random.choice(n_bkg, half_batch, replace=True)
+        for i in idx_bkg:
+            x_bkg = tf.convert_to_tensor(X_bkg[i])
+            random_pu = tf.random.uniform([2], minval=pu_min, maxval=pu_max)
+            view1, view2 = generate_pair_bkg_contrastive(x_bkg=x_bkg, target_pu_1=random_pu[0], target_pu_2=random_pu[1])
+            view1_list.append(view1.numpy())
+            view2_list.append(view2.numpy())
+
+        yield (np.array(view1_list), np.array(view2_list))
+
+
+def generate_batch_classifier(X_hs, X_pu, X_bkg, pu_min, pu_max, batch_size):
+    n_sig = X_hs.shape[0]
+    n_bkg = X_bkg.shape[0]
+    half_batch = batch_size // 2
+
+    while True:
+        x_list = []
+        y_list = []
+
+        idx_sig = np.random.choice(n_sig, half_batch, replace=True)
+        for i in idx_sig:
+            x_hs = tf.convert_to_tensor(X_hs[i])
+            x_pu = tf.convert_to_tensor(X_pu[i])
+            random_pu = tf.random.uniform([], minval=pu_min, maxval=pu_max)
+            x, y = generate_sig_label_classification(x_hs=x_hs, x_pu=x_pu, target_pu=random_pu)
+            x_list.append(x.numpy())
+            y_list.append(y.numpy())
+
+        idx_bkg = np.random.choice(n_bkg, half_batch, replace=True)
+        for i in idx_bkg:
+            x_bkg = tf.convert_to_tensor(X_bkg[i])
+            random_pu = tf.random.uniform([], minval=pu_min, maxval=pu_max)
+            x, y = generate_bkg_label_classification(x_bkg=x_bkg, target_pu=random_pu)
+            x_list.append(x.numpy())
+            y_list.append(y.numpy())
+
+        yield (np.array(x_list), np.array(y_list))
+
+
+        
