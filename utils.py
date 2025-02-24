@@ -171,4 +171,23 @@ def augment_pu(image, target_pu, shift_phi):
     return image_augmented
 
 
+def generate_pair_sig(x_hs, x_pu, target_pu_1, target_pu_2):
+    view1 = x_hs + augment_pu(image=x_pu, target_pu=target_pu_1, shift_phi=True)
+    view2 = x_hs + augment_pu(image=x_pu, target_pu=target_pu_2, shift_phi=True)
+    return view1, view2
 
+
+def generate_pair_bkg(x_bkg, target_pu_1, target_pu_2):
+    view1 = augment_pu(image=x_bkg, target_pu=target_pu_1, shift_phi=True)
+    view2 = augment_pu(image=x_bkg, target_pu=target_pu_2, shift_phi=True)
+    return view1, view2
+
+
+def generate_sig_label(x_hs, x_pu, target_pu):
+    x = x_hs + augment_pu(image=x_pu, target_pu=target_pu, shift_phi=True)
+    return x, tf.constant(1, dtype=tf.int32)
+
+
+def generate_bkg_label(x_bkg, target_pu):
+    x = augment_pu(image=x_bkg, target_pu=target_pu, shift_phi=True)
+    return x, tf.constant(0, dtype=tf.int32)
