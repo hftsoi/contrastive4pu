@@ -162,7 +162,7 @@ def augment_pu(image, target_pu, shift_phi):
     survival_mask = tf.cast(random_numbers < survival_prob, tf.float32)
 
     # zero out pixels to achieve target pu level
-    image_augmented = tf.cast(image, tf.float32) * survival_mask
+    image_augmented = image * survival_mask
 
     if shift_phi:
         shift_amount = tf.random.uniform([], minval=0, maxval=image.shape[0], dtype=tf.int32)
