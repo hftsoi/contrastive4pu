@@ -275,6 +275,7 @@ def generate_dataset_for_classifier(X_hs, X_pu, X_bkg, target_pu):
 
 def plot_roc(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu):
     plt.figure(figsize=(6,5))
+    colors = plt.cm.tab20(np.linspace(0, 1, len(test_pu)))
     
     for i, pu in enumerate(test_pu):
         y_true = Y_test[i]
@@ -287,12 +288,12 @@ def plot_roc(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu):
         auc_stand = auc(fpr_stand, tpr_stand)
         
         plt.plot(fpr_embed, tpr_embed, 
-                 label=f'PU {pu} - Embedding (AUC={auc_embed:.2f})',
-                 linestyle='-', marker=None)
+                 label=f'PU {pu} - Embedding (AUC={auc_embed:.4f})',
+                 linestyle='-', marker=None, color=colors[i])
         
         plt.plot(fpr_stand, tpr_stand, 
-                 label=f'PU {pu} - Standalone (AUC={auc_stand:.2f})',
-                 linestyle='--', marker=None)
+                 label=f'PU {pu} - Standalone (AUC={auc_stand:.4f})',
+                 linestyle='--', marker=None, color=colors[i])
     
     plt.xlabel('Bkg. eff.')
     plt.ylabel('Sig. eff.')
@@ -304,14 +305,14 @@ def plot_roc(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu):
     plt.ylim((0, 1))
     plt.show()
 
+
 def plot_sig_eff_vs_pu(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu, bkg_eff_list):
     plt.figure(figsize=(6,5))
-    n_eff = len(bkg_eff_list)
-    colors = plt.cm.tab20(np.linspace(0, 1, n_eff))
+    colors = plt.cm.tab20(np.linspace(0, 1, len(bkg_eff_list)))
     
     for j, bkg_eff in enumerate(bkg_eff_list):
-        signal_eff_embed = []
-        signal_eff_stand = []
+        sig_eff_embed = []
+        sig_eff_stand = []
         
         for i in range(len(test_pu)):
             y_true = Y_test[i]
@@ -319,16 +320,16 @@ def plot_sig_eff_vs_pu(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu, bkg
             y_pred_embed = Y_pred_embedding[i].ravel()
             fpr_embed, tpr_embed, _ = roc_curve(y_true, y_pred_embed)
             idx_embed = np.argmin(np.abs(fpr_embed - bkg_eff))
-            signal_eff_embed.append(tpr_embed[idx_embed])
+            sig_eff_embed.append(tpr_embed[idx_embed])
             
             y_pred_stand = Y_pred_standalone[i].ravel()
             fpr_stand, tpr_stand, _ = roc_curve(y_true, y_pred_stand)
             idx_stand = np.argmin(np.abs(fpr_stand - bkg_eff))
-            signal_eff_stand.append(tpr_stand[idx_stand])
+            sig_eff_stand.append(tpr_stand[idx_stand])
         
-        plt.plot(test_pu, signal_eff_embed, marker='.', linestyle='-', color=colors[j],
+        plt.plot(test_pu, sig_eff_embed, marker='.', linestyle='-', color=colors[j],
                  label=f'Embedding (bkg. eff.={bkg_eff:.4f})')
-        plt.plot(test_pu, signal_eff_stand, marker='.', linestyle='--', color=colors[j],
+        plt.plot(test_pu, sig_eff_stand, marker='.', linestyle='--', color=colors[j],
                  label=f'Standalone (bkg. eff.={bkg_eff:.4f})')
     
     plt.xlabel('PU')
