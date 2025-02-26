@@ -327,13 +327,13 @@ def plot_sig_eff_vs_pu(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu, bkg
             signal_eff_stand.append(tpr_stand[idx_stand])
         
         plt.plot(test_pu, signal_eff_embed, marker='.', linestyle='-', color=colors[j],
-                 label=f'Embedding (bkg. eff.={bkg_eff:.2f})')
+                 label=f'Embedding (bkg. eff.={bkg_eff:.4f})')
         plt.plot(test_pu, signal_eff_stand, marker='.', linestyle='--', color=colors[j],
-                 label=f'Standalone (bkg. eff.={bkg_eff:.2f})')
+                 label=f'Standalone (bkg. eff.={bkg_eff:.4f})')
     
     plt.xlabel('PU')
     plt.ylabel('Sig. eff.')
-    plt.ylim((0.9, 1))
+    #plt.ylim((0.9, 1))
     plt.legend(fontsize='small', loc='center left', bbox_to_anchor=(1, 0.5))
     plt.grid(True)
     plt.show()
