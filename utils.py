@@ -273,3 +273,68 @@ def generate_dataset_for_classifier(X_hs, X_pu, X_bkg, target_pu):
     return np.array(x_list), np.array(y_list)
 
 
+def plot_roc(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu):
+    plt.figure(figsize=(6,5))
+    
+    for i, pu in enumerate(test_pu):
+        y_true = Y_test[i]
+        y_pred_embed = Y_pred_embedding[i]
+        fpr_embed, tpr_embed, _ = roc_curve(y_true, y_pred_embed)
+        auc_embed = auc(fpr_embed, tpr_embed)
+        
+        y_pred_stand = Y_pred_standalone[i]
+        fpr_stand, tpr_stand, _ = roc_curve(y_true, y_pred_stand)
+        auc_stand = auc(fpr_stand, tpr_stand)
+        
+        plt.plot(fpr_embed, tpr_embed, 
+                 label=f'PU {pu} - Embedding (AUC={auc_embed:.2f})',
+                 linestyle='-', marker=None)
+        
+        plt.plot(fpr_stand, tpr_stand, 
+                 label=f'PU {pu} - Standalone (AUC={auc_stand:.2f})',
+                 linestyle='--', marker=None)
+    
+    plt.xlabel('Bkg. eff.')
+    plt.ylabel('Sig. eff.')
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5), fontsize='small')
+    plt.grid(True)
+    #plt.yscale('log')
+    plt.xscale('log')
+    plt.xlim((0.00001, 1))
+    plt.ylim((0, 1))
+    plt.show()
+
+def plot_sig_eff_vs_pu(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu, bkg_eff_list):
+    plt.figure(figsize=(6,5))
+    n_eff = len(bkg_eff_list)
+    colors = plt.cm.tab20(np.linspace(0, 1, n_eff))
+    
+    for j, bkg_eff in enumerate(bkg_eff_list):
+        signal_eff_embed = []
+        signal_eff_stand = []
+        
+        for i in range(len(test_pu)):
+            y_true = Y_test[i]
+            
+            y_pred_embed = Y_pred_embedding[i].ravel()
+            fpr_embed, tpr_embed, _ = roc_curve(y_true, y_pred_embed)
+            idx_embed = np.argmin(np.abs(fpr_embed - bkg_eff))
+            signal_eff_embed.append(tpr_embed[idx_embed])
+            
+            y_pred_stand = Y_pred_standalone[i].ravel()
+            fpr_stand, tpr_stand, _ = roc_curve(y_true, y_pred_stand)
+            idx_stand = np.argmin(np.abs(fpr_stand - bkg_eff))
+            signal_eff_stand.append(tpr_stand[idx_stand])
+        
+        plt.plot(test_pu, signal_eff_embed, marker='.', linestyle='-', color=colors[j],
+                 label=f'Embedding (bkg. eff.={bkg_eff:.2f})')
+        plt.plot(test_pu, signal_eff_stand, marker='.', linestyle='--', color=colors[j],
+                 label=f'Standalone (bkg. eff.={bkg_eff:.2f})')
+    
+    plt.xlabel('PU')
+    plt.ylabel('Sig. eff.')
+    plt.ylim((0.9, 1))
+    plt.legend(fontsize='small', loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.grid(True)
+    plt.show()
+
