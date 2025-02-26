@@ -251,3 +251,25 @@ def generate_batch_for_classifier(X_hs, X_pu, X_bkg, pu_min, pu_max, batch_size)
         yield (np.array(x_list), np.array(y_list))
 
 
+def generate_dataset_for_classifier(X_hs, X_pu, X_bkg, target_pu):
+    x_list = []
+    y_list = []
+
+    for i in range(X_hs.shape[0]):
+        x_hs = tf.convert_to_tensor(X_hs[i])
+        x_pu = tf.convert_to_tensor(X_pu[i])
+        x = x_hs + augment_pu(image=x_pu, target_pu=target_pu, shift_phi=True)
+        y = 1
+        x_list.append(x)
+        y_list.append(y)
+
+    for i in range(X_bkg.shape[0]):
+        x_bkg = tf.convert_to_tensor(X_bkg[i])
+        x = augment_pu(image=x_bkg, target_pu=target_pu, shift_phi=True)
+        y = 0
+        x_list.append(x)
+        y_list.append(y)
+
+    return np.array(x_list), np.array(y_list)
+
+
