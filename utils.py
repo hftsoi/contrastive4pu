@@ -153,7 +153,7 @@ def plot_layers(event_idx, X, label):
 
 
 def augment_pu(image, target_pu, shift_phi, threshold):
-    # among the low-energy cells, randomly remove a portion of them
+    # among the low-energy cells, randomly remove a portion of them according to the target/original pu ratio
     low_energy_mask = image < threshold
     random_tensor = tf.random.uniform(tf.shape(image))
     removal_prob = 1 - target_pu / 200
@@ -171,32 +171,33 @@ def augment_pu(image, target_pu, shift_phi, threshold):
         shift_amount = tf.random.uniform([], minval=0, maxval=tf.shape(image_augmented)[0], dtype=tf.int32)
         image_augmented = tf.roll(image_augmented, shift=shift_amount, axis=0)
     
-    return image_augmented, total_e_before_removal, total_e_after_removal, total_e_scale
+    #return image_augmented, total_e_before_removal, total_e_after_removal, total_e_scale
+    return image_augmented
 
 
-def generate_pair_sig_for_contrastive(x_hs, x_pu, target_pu_1, target_pu_2):
-    view1 = x_hs + augment_pu(image=x_pu, target_pu=target_pu_1, shift_phi=True)
-    view2 = x_hs + augment_pu(image=x_pu, target_pu=target_pu_2, shift_phi=True)
+def generate_pair_sig_for_contrastive(x_hs, x_pu, target_pu_1, target_pu_2, threshold):
+    view1 = x_hs + augment_pu(image=x_pu, target_pu=target_pu_1, shift_phi=True, threshold=threshold)
+    view2 = x_hs + augment_pu(image=x_pu, target_pu=target_pu_2, shift_phi=True, threshold=threshold)
     return view1, view2
 
 
-def generate_pair_bkg_for_contrastive(x_bkg, target_pu_1, target_pu_2):
-    view1 = augment_pu(image=x_bkg, target_pu=target_pu_1, shift_phi=True)
-    view2 = augment_pu(image=x_bkg, target_pu=target_pu_2, shift_phi=True)
+def generate_pair_bkg_for_contrastive(x_bkg, target_pu_1, target_pu_2, threshold):
+    view1 = augment_pu(image=x_bkg, target_pu=target_pu_1, shift_phi=True, threshold=threshold)
+    view2 = augment_pu(image=x_bkg, target_pu=target_pu_2, shift_phi=True, threshold=threshold)
     return view1, view2
 
 
-def generate_sig_label_for_classification(x_hs, x_pu, target_pu):
-    x = x_hs + augment_pu(image=x_pu, target_pu=target_pu, shift_phi=True)
+def generate_sig_label_for_classification(x_hs, x_pu, target_pu, threshold):
+    x = x_hs + augment_pu(image=x_pu, target_pu=target_pu, shift_phi=True, threshold=threshold)
     return x, tf.constant(1, dtype=tf.int32)
 
 
-def generate_bkg_label_for_classification(x_bkg, target_pu):
-    x = augment_pu(image=x_bkg, target_pu=target_pu, shift_phi=True)
+def generate_bkg_label_for_classification(x_bkg, target_pu, threshold):
+    x = augment_pu(image=x_bkg, target_pu=target_pu, shift_phi=True, threshold=threshold)
     return x, tf.constant(0, dtype=tf.int32)
 
 
-def generate_batch_for_contrastive(X_hs, X_pu, X_bkg, pu_min, pu_max, batch_size):
+def generate_batch_for_contrastive(X_hs, X_pu, X_bkg, pu_min, pu_max, batch_size, threshold):
     n_sig = X_hs.shape[0]
     n_bkg = X_bkg.shape[0]
     half_batch = batch_size // 2
@@ -210,7 +211,7 @@ def generate_batch_for_contrastive(X_hs, X_pu, X_bkg, pu_min, pu_max, batch_size
             x_hs = tf.convert_to_tensor(X_hs[i])
             x_pu = tf.convert_to_tensor(X_pu[i])
             random_pu = tf.random.uniform([2], minval=pu_min, maxval=pu_max)
-            view1, view2 = generate_pair_sig_for_contrastive(x_hs=x_hs, x_pu=x_pu, target_pu_1=random_pu[0], target_pu_2=random_pu[1])
+            view1, view2 = generate_pair_sig_for_contrastive(x_hs=x_hs, x_pu=x_pu, target_pu_1=random_pu[0], target_pu_2=random_pu[1], threshold=threshold)
             view1_list.append(view1.numpy())
             view2_list.append(view2.numpy())
 
@@ -218,14 +219,14 @@ def generate_batch_for_contrastive(X_hs, X_pu, X_bkg, pu_min, pu_max, batch_size
         for i in idx_bkg:
             x_bkg = tf.convert_to_tensor(X_bkg[i])
             random_pu = tf.random.uniform([2], minval=pu_min, maxval=pu_max)
-            view1, view2 = generate_pair_bkg_for_contrastive(x_bkg=x_bkg, target_pu_1=random_pu[0], target_pu_2=random_pu[1])
+            view1, view2 = generate_pair_bkg_for_contrastive(x_bkg=x_bkg, target_pu_1=random_pu[0], target_pu_2=random_pu[1], threshold=threshold)
             view1_list.append(view1.numpy())
             view2_list.append(view2.numpy())
 
         yield (np.array(view1_list), np.array(view2_list))
 
 
-def generate_batch_for_classifier(X_hs, X_pu, X_bkg, pu_min, pu_max, batch_size):
+def generate_batch_for_classifier(X_hs, X_pu, X_bkg, pu_min, pu_max, batch_size, threshold):
     n_sig = X_hs.shape[0]
     n_bkg = X_bkg.shape[0]
     half_batch = batch_size // 2
@@ -239,7 +240,7 @@ def generate_batch_for_classifier(X_hs, X_pu, X_bkg, pu_min, pu_max, batch_size)
             x_hs = tf.convert_to_tensor(X_hs[i])
             x_pu = tf.convert_to_tensor(X_pu[i])
             random_pu = tf.random.uniform([], minval=pu_min, maxval=pu_max)
-            x, y = generate_sig_label_for_classification(x_hs=x_hs, x_pu=x_pu, target_pu=random_pu)
+            x, y = generate_sig_label_for_classification(x_hs=x_hs, x_pu=x_pu, target_pu=random_pu, threshold=threshold)
             x_list.append(x.numpy())
             y_list.append(y.numpy())
 
@@ -247,28 +248,28 @@ def generate_batch_for_classifier(X_hs, X_pu, X_bkg, pu_min, pu_max, batch_size)
         for i in idx_bkg:
             x_bkg = tf.convert_to_tensor(X_bkg[i])
             random_pu = tf.random.uniform([], minval=pu_min, maxval=pu_max)
-            x, y = generate_bkg_label_for_classification(x_bkg=x_bkg, target_pu=random_pu)
+            x, y = generate_bkg_label_for_classification(x_bkg=x_bkg, target_pu=random_pu, threshold=threshold)
             x_list.append(x.numpy())
             y_list.append(y.numpy())
 
         yield (np.array(x_list), np.array(y_list))
 
 
-def generate_dataset_for_classifier(X_hs, X_pu, X_bkg, target_pu):
+def generate_dataset_for_classifier(X_hs, X_pu, X_bkg, target_pu, threshold):
     x_list = []
     y_list = []
 
     for i in range(X_hs.shape[0]):
         x_hs = tf.convert_to_tensor(X_hs[i])
         x_pu = tf.convert_to_tensor(X_pu[i])
-        x = x_hs + augment_pu(image=x_pu, target_pu=target_pu, shift_phi=True)
+        x = x_hs + augment_pu(image=x_pu, target_pu=target_pu, shift_phi=True, threshold=threshold)
         y = 1
         x_list.append(x)
         y_list.append(y)
 
     for i in range(X_bkg.shape[0]):
         x_bkg = tf.convert_to_tensor(X_bkg[i])
-        x = augment_pu(image=x_bkg, target_pu=target_pu, shift_phi=True)
+        x = augment_pu(image=x_bkg, target_pu=target_pu, shift_phi=True, threshold=threshold)
         y = 0
         x_list.append(x)
         y_list.append(y)
