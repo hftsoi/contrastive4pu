@@ -152,23 +152,26 @@ def plot_layers(event_idx, X, label):
     plt.show()
 
 
-def augment_pu(image, target_pu, shift_phi):
-    # input pu is 200, the target pu should be less than that to do removal
-    survival_prob = target_pu / 200
-
-    # draw random number in [0,1] and compare with survival_prob to keep or dump a pixel
-    #tf.random.set_seed(42)
-    random_numbers = tf.random.uniform(tf.shape(image))
-    survival_mask = tf.cast(random_numbers < survival_prob, tf.float32)
-
-    # zero out pixels to achieve target pu level
-    image_augmented = image * survival_mask
-
+def augment_pu(image, target_pu, shift_phi, threshold):
+    # among the low-energy cells, randomly remove a portion of them
+    low_energy_mask = image < threshold
+    random_tensor = tf.random.uniform(tf.shape(image))
+    removal_prob = 1 - target_pu / 200
+    drop_mask = tf.logical_and(low_energy_mask, random_tensor < removal_prob)
+    image_after_removal = image * (1 - tf.cast(drop_mask, tf.float32))
+    
+    # then scale the remaining cell energies
+    total_e_before_removal = tf.reduce_sum(image)
+    total_e_after_removal = tf.reduce_sum(image_after_removal)
+    total_e_scale = (total_e_before_removal * tf.cast(target_pu, tf.float32) / 200) / total_e_after_removal
+    
+    image_augmented = image_after_removal * total_e_scale
+    
     if shift_phi:
-        shift_amount = tf.random.uniform([], minval=0, maxval=image.shape[0], dtype=tf.int32)
+        shift_amount = tf.random.uniform([], minval=0, maxval=tf.shape(image_augmented)[0], dtype=tf.int32)
         image_augmented = tf.roll(image_augmented, shift=shift_amount, axis=0)
-
-    return image_augmented
+    
+    return image_augmented, total_e_before_removal, total_e_after_removal, total_e_scale
 
 
 def generate_pair_sig_for_contrastive(x_hs, x_pu, target_pu_1, target_pu_2):
