@@ -99,9 +99,9 @@ class VICRegModel(tf.keras.Model):
         return {"loss": loss, "loss_inv": loss_inv, "loss_var": loss_var, "loss_cov": loss_cov}
 
 
-def build_embedding_classifier(encoder, input_shape=input_shape):
+def build_embedding_classifier(encoder, input_shape=input_shape, encoder_trainable=False):
     # update or freeze the encoder weights
-    encoder.trainable = False
+    encoder.trainable = encoder_trainable
 
     inputs = tf.keras.Input(shape=input_shape)
     # option-training here concerns about training/inference mode in dropout, batchnorm etc. 
@@ -111,6 +111,20 @@ def build_embedding_classifier(encoder, input_shape=input_shape):
 
     return tf.keras.Model(inputs, outputs, name="embedding_classifier")
 
+
+class FreezeEncoderCallback(tf.keras.callbacks.Callback):
+    def __init__(self, freeze_epoch):
+        super(FreezeEncoderCallback, self).__init__()
+        self.freeze_epoch = freeze_epoch
+
+    def on_epoch_end(self, epoch):
+        if epoch == self.freeze_epoch - 1:
+            self.model.get_layer('encoder').trainable = False
+            self.model.compile(optimizer=self.model.optimizer,
+                               loss=self.model.loss,
+                               metrics=self.model.metrics)
+            print(f"encoder frozen starting at epoch {self.freeze_epoch}")
+            
 
 def build_standalone_classifier(input_shape=input_shape):
     inputs = tf.keras.Input(shape=input_shape)
