@@ -122,30 +122,50 @@ def cell_to_grid(data, has_cell_HS):
         return eta_bins, phi_bins, X
 
 
-def plot_layers(event_idx, X, label):
-
+def plot_layers(event_idx, X, label, n_layers):
     eta_bins = np.arange(-2.5, 2.5 + 0.1, 0.1)
     phi_bins = np.arange(-np.pi, np.pi + np.pi/32, np.pi/32)
 
-    fig, axes = plt.subplots(2, 3, figsize=(10, 6))
+    if n_layers == 6:
+        fig, axes = plt.subplots(2, 3, figsize=(10, 6))
+        for ch in range(6):
+            ax = axes[ch // 3, ch % 3]
+            
+            if event_idx is not None:
+                heatmap_data = X[event_idx, :, :, ch]
+            else:
+                heatmap_data = X[:, :, ch]
+            
+            mesh = ax.pcolormesh(eta_bins,
+                                phi_bins,
+                                heatmap_data,
+                                cmap='viridis',
+                                norm = LogNorm(vmin = 1e-1, vmax = 1e1))
+            
+            ax.set_xlabel('Eta')
+            ax.set_ylabel('Phi')
+            ax.set_title(f'Layer {ch} {label}')
+            
+            fig.colorbar(mesh, ax=ax, label='ET [GeV]')
 
-    for ch in range(6):
-        ax = axes[ch // 3, ch % 3]
+    elif n_layers == 1:
+        fig, axes = plt.subplots(1, 1, figsize=(4, 4))
+        ax = axes
         
         if event_idx is not None:
-            heatmap_data = X[event_idx, :, :, ch]
+            heatmap_data = X[event_idx, :, :, 0]
         else:
-            heatmap_data = X[:, :, ch]
+            heatmap_data = X[:, :, 0]
         
         mesh = ax.pcolormesh(eta_bins,
-                             phi_bins,
-                             heatmap_data,
-                             cmap='viridis',
-                             norm = LogNorm(vmin = 1e-1, vmax = 1e1))
+                            phi_bins,
+                            heatmap_data,
+                            cmap='viridis',
+                            norm = LogNorm(vmin = 1e-1, vmax = 1e1))
         
         ax.set_xlabel('Eta')
         ax.set_ylabel('Phi')
-        ax.set_title(f'Layer {ch} {label}')
+        #ax.set_title(f'Layer {ch} {label}')
         
         fig.colorbar(mesh, ax=ax, label='ET [GeV]')
 

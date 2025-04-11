@@ -4,7 +4,7 @@ from tensorflow import keras
 from tensorflow.keras import layers, models, Model
 from utils import *
 
-input_shape = (64, 50, 6)
+input_shape = (64, 50, 1)
 embedding_dim = 128
 projection_dim = 64
 c_inv = 25
@@ -13,9 +13,9 @@ c_cov = 1
 
 def build_encoder(input_shape=input_shape, embedding_dim=embedding_dim):
     inputs = tf.keras.Input(shape=input_shape)
-    x = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(inputs)
+    x = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
     x = tf.keras.layers.MaxPooling2D((2, 2))(x)
-    x = tf.keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(x)
+    x = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(x)
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
     x = tf.keras.layers.Dense(embedding_dim)(x)
     outputs = tf.keras.layers.LayerNormalization()(x)
@@ -114,11 +114,13 @@ def build_embedding_classifier(encoder, input_shape=input_shape):
 
 def build_standalone_classifier(input_shape=input_shape):
     inputs = tf.keras.Input(shape=input_shape)
-    x = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(inputs)
+    x = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', padding='same')(inputs)
     x = tf.keras.layers.MaxPooling2D((2, 2))(x)
-    x = tf.keras.layers.Conv2D(128, (3, 3), activation='relu', padding='same')(x)
+    x = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', padding='same')(x)
     x = tf.keras.layers.GlobalAveragePooling2D()(x)
+    x = tf.keras.layers.Dense(128, activation='relu')(x)
     x = tf.keras.layers.Dense(64, activation='relu')(x)
     outputs = tf.keras.layers.Dense(1, activation='sigmoid')(x)
 
     return tf.keras.Model(inputs, outputs, name="standalone_classifier")
+
