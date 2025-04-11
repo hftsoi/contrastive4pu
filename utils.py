@@ -10,6 +10,7 @@ from matplotlib.colors import LogNorm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import roc_curve, auc, accuracy_score
 from sklearn.preprocessing import StandardScaler, LabelEncoder
+import matplotlib.gridspec as gridspec
 
 
 def cell_to_grid(data, has_cell_HS):
@@ -343,6 +344,7 @@ def plot_sig_eff_vs_pu_at_single_bkgeff(Y_test, Y_pred_embedding, Y_pred_standal
     plt.grid(True)
     plt.show()
 
+
 def plot_eff_vs_pu_at_single_threshold(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu, threshold_by_target_bkgeff_pu):
     # fix a single threshold from a ref bkg eff at a ref pu
     threshold_by_target_bkgeff, threshold_by_target_pu = threshold_by_target_bkgeff_pu
@@ -384,19 +386,24 @@ def plot_eff_vs_pu_at_single_threshold(Y_test, Y_pred_embedding, Y_pred_standalo
     axes[0].plot(test_pu, stand_bkgeff, marker='o', linestyle='--', color='black', label='Standalone')
     axes[0].set_xlabel('PU')
     axes[0].set_ylabel('Bkg. eff.')
-    axes[0].set_title(f'Threshold fixed by target bkg.eff.={threshold_by_target_bkgeff} at PU={test_pu[idx]}')
+    axes[0].set_title(f'Single threshold fixed by a target bkg.eff.={threshold_by_target_bkgeff} at PU={test_pu[idx]}', fontsize=10)
     axes[0].grid(True)
     axes[0].legend()
+    axes[0].axvline(x=test_pu[idx], color='blue', linestyle='-', alpha=0.5)
+    #axes[0].axhline(y=emb_bkgeff[idx], color='blue', linestyle='-', alpha=0.5)
     
     axes[1].plot(test_pu, emb_sigeff, marker='o', linestyle='-', color='black', label='Embedding')
     axes[1].plot(test_pu, stand_sigeff, marker='o', linestyle='--', color='black', label='Standalone')
     axes[1].set_xlabel('PU')
     axes[1].set_ylabel('Sig. eff.')
-    axes[1].set_title(f'Threshold fixed by target bkg.eff.={threshold_by_target_bkgeff} at PU={test_pu[idx]}')
+    axes[1].set_title(f'Single threshold fixed by a target bkg.eff.={threshold_by_target_bkgeff} at PU={test_pu[idx]}', fontsize=10)
     axes[1].grid(True)
     axes[1].legend()
+    axes[1].axvline(x=test_pu[idx], color='blue', linestyle='-', alpha=0.5)
+    #axes[1].axhline(y=emb_sigeff[idx], color='blue', linestyle='-', alpha=0.5)
+    #axes[1].axhline(y=stand_sigeff[idx], color='blue', linestyle='-', alpha=0.5)
+    axes[1].set_ylim((0,1))
     
     plt.tight_layout()
     plt.show()
 
-    
