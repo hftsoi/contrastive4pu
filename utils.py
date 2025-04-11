@@ -310,7 +310,7 @@ def plot_roc(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu):
     plt.show()
 
 
-def plot_sig_eff_vs_pu(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu, bkg_eff_list):
+def plot_sig_eff_vs_pu_at_single_bkgeff(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu, bkg_eff_list):
     plt.figure(figsize=(6,5))
     colors = plt.cm.tab20(np.linspace(0, 1, len(bkg_eff_list)))
     
@@ -343,3 +343,60 @@ def plot_sig_eff_vs_pu(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu, bkg
     plt.grid(True)
     plt.show()
 
+def plot_eff_vs_pu_at_single_threshold(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu, threshold_by_target_bkgeff_pu):
+    # fix a single threshold from a ref bkg eff at a ref pu
+    threshold_by_target_bkgeff, threshold_by_target_pu = threshold_by_target_bkgeff_pu
+    test_pu_array = np.array(test_pu)
+    idx = np.argmin(np.abs(test_pu_array - threshold_by_target_pu))
+    
+    # determine the fixed threshold for the embedding classifier
+    y_true_ref = Y_test[idx]
+    y_pred_embed_ref = Y_pred_embedding[idx].ravel()
+    bkg_scores_embed = y_pred_embed_ref[y_true_ref == 0]
+    emb_threshold = np.percentile(bkg_scores_embed, 100 * (1 - threshold_by_target_bkgeff))
+    
+    # determine the fixed threshold for the standalone classifier
+    y_pred_stand_ref = Y_pred_standalone[idx].ravel()
+    bkg_scores_stand = y_pred_stand_ref[y_true_ref == 0]
+    stand_threshold = np.percentile(bkg_scores_stand, 100 * (1 - threshold_by_target_bkgeff))
+    
+    emb_bkgeff, stand_bkgeff = [], []
+    emb_sigeff, stand_sigeff = [], []
+    
+    for i, pu in enumerate(test_pu):
+        y_true = Y_test[i]
+        y_pred_embed = Y_pred_embedding[i].ravel()
+        y_pred_stand = Y_pred_standalone[i].ravel()
+        
+        fpr_embed = np.mean(y_pred_embed[y_true == 0] >= emb_threshold)
+        tpr_embed = np.mean(y_pred_embed[y_true == 1] >= emb_threshold)
+        emb_bkgeff.append(fpr_embed)
+        emb_sigeff.append(tpr_embed)
+        
+        fpr_stand = np.mean(y_pred_stand[y_true == 0] >= stand_threshold)
+        tpr_stand = np.mean(y_pred_stand[y_true == 1] >= stand_threshold)
+        stand_bkgeff.append(fpr_stand)
+        stand_sigeff.append(tpr_stand)
+    
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    
+    axes[0].plot(test_pu, emb_bkgeff, marker='o', linestyle='-', color='black', label='Embedding')
+    axes[0].plot(test_pu, stand_bkgeff, marker='o', linestyle='--', color='black', label='Standalone')
+    axes[0].set_xlabel('PU')
+    axes[0].set_ylabel('Bkg. eff.')
+    axes[0].set_title(f'Threshold fixed by target bkg.eff.={threshold_by_target_bkgeff} at PU={test_pu[idx]}')
+    axes[0].grid(True)
+    axes[0].legend()
+    
+    axes[1].plot(test_pu, emb_sigeff, marker='o', linestyle='-', color='black', label='Embedding')
+    axes[1].plot(test_pu, stand_sigeff, marker='o', linestyle='--', color='black', label='Standalone')
+    axes[1].set_xlabel('PU')
+    axes[1].set_ylabel('Sig. eff.')
+    axes[1].set_title(f'Threshold fixed by target bkg.eff.={threshold_by_target_bkgeff} at PU={test_pu[idx]}')
+    axes[1].grid(True)
+    axes[1].legend()
+    
+    plt.tight_layout()
+    plt.show()
+
+    
