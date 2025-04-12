@@ -298,27 +298,35 @@ def generate_dataset_for_classifier(X_hs, X_pu, X_bkg, target_pu, threshold):
     return np.array(x_list), np.array(y_list)
 
 
-def plot_roc(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu):
+def plot_roc(Y_test, Y_pred_embedding_nofinetune, Y_pred_embedding_finetune, Y_pred_standalone, test_pu):
     plt.figure(figsize=(6,5))
     colors = plt.cm.tab20(np.linspace(0, 1, len(test_pu)))
     
     for i, pu in enumerate(test_pu):
         y_true = Y_test[i]
-        y_pred_embed = Y_pred_embedding[i]
-        fpr_embed, tpr_embed, _ = roc_curve(y_true, y_pred_embed)
-        auc_embed = auc(fpr_embed, tpr_embed)
+        y_pred_embed_nofinetuning = Y_pred_embedding_nofinetune[i]
+        fpr_embed_nofinetuning, tpr_embed_nofinetuning, _ = roc_curve(y_true, y_pred_embed_nofinetuning)
+        auc_embed_nofinetuning = auc(fpr_embed_nofinetuning, tpr_embed_nofinetuning)
+
+        y_pred_embed_finetuning = Y_pred_embedding_finetune[i]
+        fpr_embed_finetuning, tpr_embed_finetuning, _ = roc_curve(y_true, y_pred_embed_finetuning)
+        auc_embed_finetuning = auc(fpr_embed_finetuning, tpr_embed_finetuning)
         
         y_pred_stand = Y_pred_standalone[i]
         fpr_stand, tpr_stand, _ = roc_curve(y_true, y_pred_stand)
         auc_stand = auc(fpr_stand, tpr_stand)
         
-        plt.plot(fpr_embed, tpr_embed, 
-                 label=f'PU {pu} - Embedding (AUC={auc_embed:.4f})',
-                 linestyle='-', marker=None, color=colors[i])
-        
         plt.plot(fpr_stand, tpr_stand, 
                  label=f'PU {pu} - Standalone (AUC={auc_stand:.4f})',
+                 linestyle='-', marker=None, color=colors[i])
+        
+        plt.plot(fpr_embed_nofinetuning, tpr_embed_nofinetuning, 
+                 label=f'PU {pu} - Embedding, no fine-tuning (AUC={auc_embed_nofinetuning:.4f})',
                  linestyle='--', marker=None, color=colors[i])
+        
+        plt.plot(fpr_embed_finetuning, tpr_embed_finetuning, 
+                 label=f'PU {pu} - Embedding, fine-tuning (AUC={auc_embed_finetuning:.4f})',
+                 linestyle='dotted', marker=None, color=colors[i])
     
     plt.xlabel('Bkg. eff.')
     plt.ylabel('Sig. eff.')
@@ -331,31 +339,39 @@ def plot_roc(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu):
     plt.show()
 
 
-def plot_sig_eff_vs_pu_at_single_bkgeff(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu, bkg_eff_list):
+def plot_sig_eff_vs_pu_at_single_bkgeff(Y_test, Y_pred_embedding_nofinetune, Y_pred_embedding_finetune, Y_pred_standalone, test_pu, bkg_eff_list):
     plt.figure(figsize=(6,5))
     colors = plt.cm.tab20(np.linspace(0, 1, len(bkg_eff_list)))
     
     for j, bkg_eff in enumerate(bkg_eff_list):
-        sig_eff_embed = []
+        sig_eff_embed_nofinetune = []
+        sig_eff_embed_finetune = []
         sig_eff_stand = []
         
         for i in range(len(test_pu)):
             y_true = Y_test[i]
             
-            y_pred_embed = Y_pred_embedding[i].ravel()
-            fpr_embed, tpr_embed, _ = roc_curve(y_true, y_pred_embed)
-            idx_embed = np.argmin(np.abs(fpr_embed - bkg_eff))
-            sig_eff_embed.append(tpr_embed[idx_embed])
+            y_pred_embed_nofinetune = Y_pred_embedding_nofinetune[i].ravel()
+            fpr_embed_nofinetune, tpr_embed_nofinetune, _ = roc_curve(y_true, y_pred_embed_nofinetune)
+            idx_embed_nofinetune = np.argmin(np.abs(fpr_embed_nofinetune - bkg_eff))
+            sig_eff_embed_nofinetune.append(tpr_embed_nofinetune[idx_embed_nofinetune])
+
+            y_pred_embed_finetune = Y_pred_embedding_finetune[i].ravel()
+            fpr_embed_finetune, tpr_embed_finetune, _ = roc_curve(y_true, y_pred_embed_finetune)
+            idx_embed_finetune = np.argmin(np.abs(fpr_embed_finetune - bkg_eff))
+            sig_eff_embed_finetune.append(tpr_embed_finetune[idx_embed_finetune])
             
             y_pred_stand = Y_pred_standalone[i].ravel()
             fpr_stand, tpr_stand, _ = roc_curve(y_true, y_pred_stand)
             idx_stand = np.argmin(np.abs(fpr_stand - bkg_eff))
             sig_eff_stand.append(tpr_stand[idx_stand])
         
-        plt.plot(test_pu, sig_eff_embed, marker='.', linestyle='-', color=colors[j],
-                 label=f'Embedding (bkg. eff.={bkg_eff:.4f})')
-        plt.plot(test_pu, sig_eff_stand, marker='.', linestyle='--', color=colors[j],
+        plt.plot(test_pu, sig_eff_stand, marker='.', linestyle='-', color=colors[j],
                  label=f'Standalone (bkg. eff.={bkg_eff:.4f})')
+        plt.plot(test_pu, sig_eff_embed_nofinetune, marker='.', linestyle='--', color=colors[j],
+                 label=f'Embedding, no fine-tuning (bkg. eff.={bkg_eff:.4f})')
+        plt.plot(test_pu, sig_eff_embed_finetune, marker='.', linestyle='dotted', color=colors[j],
+                 label=f'Embedding, fine-tuning (bkg. eff.={bkg_eff:.4f})')
     
     plt.xlabel('PU')
     plt.ylabel('Sig. eff.')
@@ -365,7 +381,7 @@ def plot_sig_eff_vs_pu_at_single_bkgeff(Y_test, Y_pred_embedding, Y_pred_standal
     plt.show()
 
 
-def plot_eff_vs_pu_at_single_threshold(Y_test, Y_pred_embedding, Y_pred_standalone, test_pu, threshold_by_target_bkgeff_pu):
+def plot_eff_vs_pu_at_single_threshold(Y_test, Y_pred_embedding_nofinetune, Y_pred_embedding_finetune, Y_pred_standalone, test_pu, threshold_by_target_bkgeff_pu):
     # fix a single threshold from a ref bkg eff at a ref pu
     threshold_by_target_bkgeff, threshold_by_target_pu = threshold_by_target_bkgeff_pu
     test_pu_array = np.array(test_pu)
@@ -373,27 +389,38 @@ def plot_eff_vs_pu_at_single_threshold(Y_test, Y_pred_embedding, Y_pred_standalo
     
     # determine the fixed threshold for the embedding classifier
     y_true_ref = Y_test[idx]
-    y_pred_embed_ref = Y_pred_embedding[idx].ravel()
-    bkg_scores_embed = y_pred_embed_ref[y_true_ref == 0]
-    emb_threshold = np.percentile(bkg_scores_embed, 100 * (1 - threshold_by_target_bkgeff))
+    y_pred_embed_nofinetune_ref = Y_pred_embedding_nofinetune[idx].ravel()
+    bkg_scores_embed_nofinetune = y_pred_embed_nofinetune_ref[y_true_ref == 0]
+    emb_nofinetune_threshold = np.percentile(bkg_scores_embed_nofinetune, 100 * (1 - threshold_by_target_bkgeff))
+
+    y_pred_embed_finetune_ref = Y_pred_embedding_finetune[idx].ravel()
+    bkg_scores_embed_finetune = y_pred_embed_finetune_ref[y_true_ref == 0]
+    emb_finetune_threshold = np.percentile(bkg_scores_embed_finetune, 100 * (1 - threshold_by_target_bkgeff))
     
     # determine the fixed threshold for the standalone classifier
     y_pred_stand_ref = Y_pred_standalone[idx].ravel()
     bkg_scores_stand = y_pred_stand_ref[y_true_ref == 0]
     stand_threshold = np.percentile(bkg_scores_stand, 100 * (1 - threshold_by_target_bkgeff))
     
-    emb_bkgeff, stand_bkgeff = [], []
-    emb_sigeff, stand_sigeff = [], []
+    emb_nofinetune_bkgeff, emb_finetune_bkgeff, stand_bkgeff = [], [], []
+    emb_nofinetune_sigeff, emb_finetune_sigeff, stand_sigeff = [], [], []
     
     for i, pu in enumerate(test_pu):
         y_true = Y_test[i]
-        y_pred_embed = Y_pred_embedding[i].ravel()
-        y_pred_stand = Y_pred_standalone[i].ravel()
+        y_pred_embed_nofinetune = Y_pred_embedding_nofinetune[i].ravel()
+        y_pred_embed_finetune = Y_pred_embedding_finetune[i].ravel()
         
-        fpr_embed = np.mean(y_pred_embed[y_true == 0] >= emb_threshold)
-        tpr_embed = np.mean(y_pred_embed[y_true == 1] >= emb_threshold)
-        emb_bkgeff.append(fpr_embed)
-        emb_sigeff.append(tpr_embed)
+        fpr_embed_nofinetune = np.mean(y_pred_embed_nofinetune[y_true == 0] >= emb_nofinetune_threshold)
+        tpr_embed_nofinetune = np.mean(y_pred_embed_nofinetune[y_true == 1] >= emb_nofinetune_threshold)
+        emb_nofinetune_bkgeff.append(fpr_embed_nofinetune)
+        emb_nofinetune_sigeff.append(tpr_embed_nofinetune)
+
+        fpr_embed_finetune = np.mean(y_pred_embed_finetune[y_true == 0] >= emb_finetune_threshold)
+        tpr_embed_finetune = np.mean(y_pred_embed_finetune[y_true == 1] >= emb_finetune_threshold)
+        emb_finetune_bkgeff.append(fpr_embed_finetune)
+        emb_finetune_sigeff.append(tpr_embed_finetune)
+
+        y_pred_stand = Y_pred_standalone[i].ravel()
         
         fpr_stand = np.mean(y_pred_stand[y_true == 0] >= stand_threshold)
         tpr_stand = np.mean(y_pred_stand[y_true == 1] >= stand_threshold)
@@ -402,27 +429,29 @@ def plot_eff_vs_pu_at_single_threshold(Y_test, Y_pred_embedding, Y_pred_standalo
     
     fig, axes = plt.subplots(1, 2, figsize=(10, 5))
     
-    axes[0].plot(test_pu, emb_bkgeff, marker='o', linestyle='-', color='black', label='Embedding')
-    axes[0].plot(test_pu, stand_bkgeff, marker='o', linestyle='--', color='black', label='Standalone')
+    axes[0].plot(test_pu, stand_bkgeff, marker='.', linestyle='-', color='black', label='Standalone')
+    axes[0].plot(test_pu, emb_nofinetune_bkgeff, marker='.', linestyle='-', color='blue', label='Embedding, no fine-tuning')
+    axes[0].plot(test_pu, emb_finetune_bkgeff, marker='.', linestyle='-', color='red', label='Embedding, fine-tuning')
     axes[0].set_xlabel('PU')
     axes[0].set_ylabel('Bkg. eff.')
     axes[0].set_title(f'Single threshold fixed by a target bkg.eff.={threshold_by_target_bkgeff} at PU={test_pu[idx]}', fontsize=10)
     axes[0].grid(True)
-    axes[0].legend()
-    axes[0].axvline(x=test_pu[idx], color='blue', linestyle='-', alpha=0.5)
+    axes[0].axvline(x=test_pu[idx], color='grey', linestyle='-', alpha=1, label='Ref. PU')
     #axes[0].axhline(y=emb_bkgeff[idx], color='blue', linestyle='-', alpha=0.5)
+    axes[0].legend()
     
-    axes[1].plot(test_pu, emb_sigeff, marker='o', linestyle='-', color='black', label='Embedding')
-    axes[1].plot(test_pu, stand_sigeff, marker='o', linestyle='--', color='black', label='Standalone')
+    axes[1].plot(test_pu, stand_sigeff, marker='.', linestyle='-', color='black', label='Standalone')
+    axes[1].plot(test_pu, emb_nofinetune_sigeff, marker='.', linestyle='-', color='blue', label='Embedding, no fine-tuning')
+    axes[1].plot(test_pu, emb_finetune_sigeff, marker='.', linestyle='-', color='red', label='Embedding, fine-tuning')
     axes[1].set_xlabel('PU')
     axes[1].set_ylabel('Sig. eff.')
     axes[1].set_title(f'Single threshold fixed by a target bkg.eff.={threshold_by_target_bkgeff} at PU={test_pu[idx]}', fontsize=10)
     axes[1].grid(True)
-    axes[1].legend()
-    axes[1].axvline(x=test_pu[idx], color='blue', linestyle='-', alpha=0.5)
+    axes[1].axvline(x=test_pu[idx], color='grey', linestyle='-', alpha=1, label='Ref. PU')
     #axes[1].axhline(y=emb_sigeff[idx], color='blue', linestyle='-', alpha=0.5)
     #axes[1].axhline(y=stand_sigeff[idx], color='blue', linestyle='-', alpha=0.5)
     axes[1].set_ylim((0,1))
+    axes[1].legend()
     
     plt.tight_layout()
     plt.show()
