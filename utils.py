@@ -436,7 +436,7 @@ def plot_eff_vs_pu_at_single_threshold(Y_test, Y_pred_embedding_nofinetune, Y_pr
     axes[0].set_ylabel('Bkg. eff.')
     axes[0].set_title(f'Single threshold fixed by a target bkg.eff.={threshold_by_target_bkgeff} at PU={test_pu[idx]}', fontsize=10)
     axes[0].grid(True)
-    axes[0].axvline(x=test_pu[idx], color='grey', linestyle='-', alpha=1, label='Ref. PU')
+    axes[0].axvline(x=test_pu[idx], color='orange', linestyle='-', alpha=1, label='Ref. PU')
     #axes[0].axhline(y=emb_bkgeff[idx], color='blue', linestyle='-', alpha=0.5)
     axes[0].legend()
     
@@ -447,7 +447,7 @@ def plot_eff_vs_pu_at_single_threshold(Y_test, Y_pred_embedding_nofinetune, Y_pr
     axes[1].set_ylabel('Sig. eff.')
     axes[1].set_title(f'Single threshold fixed by a target bkg.eff.={threshold_by_target_bkgeff} at PU={test_pu[idx]}', fontsize=10)
     axes[1].grid(True)
-    axes[1].axvline(x=test_pu[idx], color='grey', linestyle='-', alpha=1, label='Ref. PU')
+    axes[1].axvline(x=test_pu[idx], color='orange', linestyle='-', alpha=1, label='Ref. PU')
     #axes[1].axhline(y=emb_sigeff[idx], color='blue', linestyle='-', alpha=0.5)
     #axes[1].axhline(y=stand_sigeff[idx], color='blue', linestyle='-', alpha=0.5)
     axes[1].set_ylim((0,1))
